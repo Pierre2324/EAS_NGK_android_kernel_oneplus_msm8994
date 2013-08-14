@@ -111,8 +111,8 @@ void __local_bh_disable_ip(unsigned long ip, unsigned int cnt)
 	 * We must manually increment preempt_count here and manually
 	 * call the trace_preempt_off later.
 	 */
-
 	__preempt_count_add(cnt);
+
 	/*
 	 * Were softirqs turned off above:
 	 */
@@ -240,7 +240,7 @@ restart:
 				       " exited with %08x?\n", vec_nr,
 				       softirq_to_name[vec_nr], h->action,
 				       prev_count, preempt_count());
-				preempt_count() = prev_count;
+				preempt_count_set(prev_count);
 			}
 
 			rcu_bh_qs(cpu);
