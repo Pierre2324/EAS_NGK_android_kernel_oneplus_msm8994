@@ -62,9 +62,9 @@ static int update_average_load(unsigned int freq, unsigned int cpu)
 	struct cpu_load_data *pcpu = &per_cpu(cpuload, cpu);
 	struct cpufreq_policy policy;
 
-        ret = cpufreq_get_policy(&policy, cpu);
-        if (ret)
-                return -EINVAL;
+	ret = cpufreq_get_policy(&policy, cpu);
+	if (ret)
+		return -EINVAL;
 
 	cur_idle_time = get_cpu_idle_time(cpu, &cur_wall_time, 0);
 
