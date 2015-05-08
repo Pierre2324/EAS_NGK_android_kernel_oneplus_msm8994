@@ -4762,10 +4762,7 @@ long __sched io_schedule_timeout(long timeout)
 
 	current->in_iowait = 1;
 
-	if (old_iowait)
-		blk_schedule_flush_plug(current);
-	else
-		blk_flush_plug(current);
+	blk_schedule_flush_plug(current);
 
 	delayacct_blkio_start();
 	rq = raw_rq();
