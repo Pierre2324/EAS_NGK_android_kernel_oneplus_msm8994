@@ -7633,7 +7633,7 @@ static inline enum fbq_type fbq_classify_rq(struct rq *rq)
 #endif /* CONFIG_NUMA_BALANCING */
 
 #define lb_sd_parent(sd) \
-        (sd->parent && sd->parent->groups != sd->parent->groups->next)
+	(sd->parent && sd->parent->groups != sd->parent->groups->next)
 
 /**
  * update_sd_lb_stats - Update sched_domain's statistics for load balancing.
