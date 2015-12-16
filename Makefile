@@ -165,12 +165,7 @@ export srctree objtree VPATH
 # then ARCH is assigned, getting whatever value it gets normally, and 
 # SUBARCH is subsequently ignored.
 
-SUBARCH := $(shell uname -m | sed -e s/i.86/x86/ -e s/x86_64/x86/ \
-				  -e s/sun4u/sparc64/ \
-				  -e s/arm.*/arm/ -e s/sa110/arm/ \
-				  -e s/s390x/s390/ -e s/parisc64/parisc/ \
-				  -e s/ppc.*/powerpc/ -e s/mips.*/mips/ \
-				  -e s/sh[234].*/sh/ -e s/aarch64.*/arm64/ )
+SUBARCH := arm64
 
 # Cross compiling and selecting different set of gcc/bin-utils
 # ---------------------------------------------------------------------------
@@ -192,9 +187,13 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/x86/ -e s/x86_64/x86/ \
 # "make" in the configured kernel build directory always uses that.
 # Default value for CROSS_COMPILE is not to prefix executables
 # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
-ARCH		?= $(SUBARCH)
-CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
-
+ARCH		?= arm64
+# Check for Suzumiya Build System
+ifeq ($(TOOLCHAIN_SUFFIX),)
+  CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
+else
+  CROSS_COMPILE	:= $(TOOLCHAIN_SUFFIX)
+endif
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
 SRCARCH 	:= $(ARCH)
@@ -238,11 +237,39 @@ export KCONFIG_CONFIG
 CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 	  else if [ -x /bin/bash ]; then echo /bin/bash; \
 	  else echo sh; fi ; fi)
+FLAGS_OPTIMIZE := -falign-functions=32 -fgcse-las -fivopts \
+	-fgcse-sm \
+	-fipa-pta \
+	-fomit-frame-pointer \
+	-frename-registers \
+	-ftracer \
+	-ftree-loop-im \
+	-ftree-loop-ivcanon \
+	-funsafe-loop-optimizations \
+	-funswitch-loops \
+	-fweb \
+	-Wno-error=array-bounds \
+	-Wno-error=clobbered \
+	-Wno-error=maybe-uninitialized \
+	-Wno-error=strict-overflow \
+	-fgcse-after-reload \
+	-floop-block \
+	-floop-interchange \
+	-floop-nest-optimize \
+	-floop-parallelize-all \
+	-floop-strip-mine \
+	-fmodulo-sched \
+	-fmodulo-sched-allow-regmoves \
+	-frerun-cse-after-loop \
+	-frename-registers \
+	$(GRAPHITE)
 
-HOSTCC       = gcc
-HOSTCXX      = g++
-HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer -std=gnu89
-HOSTCXXFLAGS = -O2
+GRAPHITE = -fgraphite -fgraphite-identity -floop-interchange -ftree-loop-distribution -floop-strip-mine -floop-block -ftree-loop-linear \
+	   $(FLAGS_OPTIMIZE)
+HOSTCC       = $(which ccache) gcc
+HOSTCXX      = $(which ccache) g++
+HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -Ofast -fno-inline-functions -fno-ipa-cp-clone -fomit-frame-pointer -std=gnu89 $(GRAPHITE) $(FLAGS_OPTIMIZE)
+HOSTCXXFLAGS = -Ofast -fno-inline-functions -fgcse-las -pipe -fno-ipa-cp-clone $(GRAPHITE) $(FLAGS_OPTIMIZE)
 
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
@@ -326,7 +353,13 @@ include $(srctree)/scripts/Kbuild.include
 
 AS		= $(CROSS_COMPILE)as
 LD		= $(CROSS_COMPILE)ld
-REAL_CC		= $(CROSS_COMPILE)gcc
+CC		= $(which ccache) $(CROSS_COMPILE)gcc
+LD		+= -Ofast --strip-debug
+CC		+= -Ofast
+CC		+= -fmodulo-sched -fmodulo-sched-allow-regmoves
+CC		+= -fgraphite-identity -floop-block -floop-interchange -floop-strip-mine
+CC		+= -ftree-loop-linear -ftree-loop-distribution
+CC		+= -mlow-precision-recip-sqrt -mpc-relative-literal-loads
 CPP		= $(CC) -E
 AR		= $(CROSS_COMPILE)ar
 NM		= $(CROSS_COMPILE)nm
@@ -340,20 +373,33 @@ DEPMOD		= /sbin/depmod
 PERL		= perl
 CHECK		= sparse
 
-# Use the wrapper for the compiler.  This wrapper scans for new
-# warnings and causes the build to stop upon encountering them.
-CC		= $(srctree)/scripts/gcc-wrapper.py $(REAL_CC)
-
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
-CFLAGS_MODULE   =
-AFLAGS_MODULE   =
-LDFLAGS_MODULE  =
-CFLAGS_KERNEL	=
-AFLAGS_KERNEL	=
+CFLAGS_MODULE   = $(GRAPHITE)
+AFLAGS_MODULE   = $(GRAPHITE)
+LDFLAGS_MODULE  = --strip-debug
+CFLAGS_KERNEL	= $(GRAPHITE) -mcpu=cortex-a57.cortex-a53+crypto+crc -mtune=cortex-a57.cortex-a53 -march=armv8-a+crypto+crc
+AFLAGS_KERNEL	= $(GRAPHITE)
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
 
 
+# fall back to -march=armv8-a in case the compiler isn't compatible 
+# with -mcpu and -mtune
+ARM_ARCH_OPT := -mcpu=cortex-a57.cortex-a53+crypto+crc -mtune=cortex-a57.cortex-a53 
+GEN_OPT_FLAGS := $(call cc-option,$(ARM_ARCH_OPT),-march=armv8-a+crypto+crc) \
+ -g0 \
+ -DNDEBUG \
+ -fomit-frame-pointer \
+ -fmodulo-sched \
+ -fmodulo-sched-allow-regmoves \
+ -fivopts \
+ -fsection-anchors \
+ -Wno-array-bounds \
+ -fno-store-merging \
+ -pipe \
+ $(GRAPHITE) \
+ $(FLAGS_OPTIMIZE)
+ 
 # Use USERINCLUDE when you must reference the UAPI directories only.
 USERINCLUDE    := \
 		-I$(srctree)/arch/$(hdr-arch)/include/uapi \
@@ -377,15 +423,37 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
+		   -mcpu=cortex-a57.cortex-a53+crypto+crc -mtune=cortex-a57.cortex-a53+crypto+crc  \
+		   -march=armv8-a+crypto+crc \
+		   -no-pie -fno-pic \
+		   -Ofast -fno-inline-functions \
+		   -fgcse-sm -fsched-spec-load \
+		   -fsingle-precision-constant \
 		   -fno-delete-null-pointer-checks \
 		   -std=gnu89
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
+		   -std=gnu89 -Wno-unused-const-variable -Wno-misleading-indentation \
+           -Wno-memset-transposed-args  -Wno-bool-compare -Wno-logical-not-parentheses \
+		   -Wno-switch-bool \
+		   -Wno-bool-operation -Wno-nonnull -Wno-switch-unreachable -Wno-format-truncation -Wno-format-overflow -Wno-duplicate-decl-specifier -Wno-memset-elt-size -Wno-int-in-bool-context \
+		   $(GEN_OPT_FLAGS) \
+		   $(GRAPHITE) \
+		   $(FLAGS_OPTIMIZE)
 KBUILD_AFLAGS   := -D__ASSEMBLY__
-KBUILD_AFLAGS_MODULE  := -DMODULE
-KBUILD_CFLAGS_MODULE  := -DMODULE
+KBUILD_AFLAGS_MODULE  := -DMODULE $(GEN_OPT_FLAGS)
+KBUILD_CFLAGS_MODULE  := -DMODULE -fno-pic $(GEN_OPT_FLAGS)
 KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
+
+# Disable some warnings
+KBUILD_CFLAGS += $(call cc-disable-warning,maybe-uninitialized)
+KBUILD_CFLAGS += $(call cc-disable-warning,array-bounds)
+KBUILD_CFLAGS += $(call cc-disable-warning,unused-function)
+KBUILD_CFLAGS += $(call cc-disable-warning, unused-variable)
+
+# another warning
+KBUILD_CFLAGS += $(call cc-disable-warning, unused-const-variable)
 
 #ifdef VENDOR_EDIT
 KBUILD_CFLAGS +=   -DVENDOR_EDIT
@@ -397,6 +465,9 @@ CFLAGS_MODULE +=   -DVENDOR_EDIT
 # Read KERNELRELEASE from include/config/kernel.release (if it exists)
 KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
 KERNELVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))$(EXTRAVERSION)
+
+# arter97's optimizations
+KBUILD_CFLAGS	+= -pipe -fno-pic
 
 export VERSION PATCHLEVEL SUBLEVEL KERNELRELEASE KERNELVERSION
 export ARCH SRCARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC
@@ -504,7 +575,7 @@ ifeq ($(config-targets),1)
 
 # Read arch specific Makefile to set KBUILD_DEFCONFIG as needed.
 # KBUILD_DEFCONFIG may point out an alternative default configuration
-# used for 'make defconfig'
+# used for 'make defconfig'.
 include $(srctree)/arch/$(SRCARCH)/Makefile
 export KBUILD_DEFCONFIG KBUILD_KCONFIG
 
@@ -583,13 +654,15 @@ endif # $(dot-config)
 # Defaults to vmlinux, but the arch makefile usually adds further targets
 all: vmlinux
 
-KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
+# force no-pie for distro compilers that enable pie by default
+KBUILD_CFLAGS += $(call cc-option, -fno-pie)
+KBUILD_CFLAGS += $(call cc-option, -no-pie)
+KBUILD_AFLAGS += $(call cc-option, -fno-pie)
+KBUILD_CPPFLAGS += $(call cc-option, -fno-pie)
 
-ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
-KBUILD_CFLAGS	+= -Os $(call cc-disable-warning,maybe-uninitialized,)
-else
-KBUILD_CFLAGS	+= -finline-functions -O2
-endif
+
+KBUILD_CFLAGS	+= -Ofast -fno-inline-functions -fno-pic -fno-ipa-cp-clone -Wno-maybe-uninitialized
+KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
 
 # Tell gcc to never replace conditional load with a non-conditional one
 KBUILD_CFLAGS	+= $(call cc-option,--param=allow-store-data-races=0)
@@ -613,10 +686,6 @@ ifdef CONFIG_READABLE_ASM
 KBUILD_CFLAGS += $(call cc-option,-fno-reorder-blocks,) \
                  $(call cc-option,-fno-ipa-cp-clone,) \
                  $(call cc-option,-fno-partial-inlining)
-endif
-
-ifneq ($(CONFIG_FRAME_WARN),0)
-KBUILD_CFLAGS += $(call cc-option,-Wframe-larger-than=${CONFIG_FRAME_WARN})
 endif
 
 # Handle stack protector mode.
@@ -643,19 +712,7 @@ KBUILD_CFLAGS += $(stackp-flag)
 # This warning generated too much noise in a regular build.
 # Use make W=1 to enable this warning (see scripts/Makefile.build)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
-
-ifdef CONFIG_FRAME_POINTER
-KBUILD_CFLAGS	+= -fno-omit-frame-pointer -fno-optimize-sibling-calls
-else
-# Some targets (ARM with Thumb2, for example), can't be built with frame
-# pointers.  For those, we don't have FUNCTION_TRACER automatically
-# select FRAME_POINTER.  However, FUNCTION_TRACER adds -pg, and this is
-# incompatible with -fomit-frame-pointer with current GCC, so we don't use
-# -fomit-frame-pointer with FUNCTION_TRACER.
-ifndef CONFIG_FUNCTION_TRACER
 KBUILD_CFLAGS	+= -fomit-frame-pointer
-endif
-endif
 
 KBUILD_CFLAGS   += $(call cc-option, -fno-var-tracking-assignments)
 
@@ -669,19 +726,6 @@ KBUILD_CFLAGS 	+= $(call cc-option, -femit-struct-debug-baseonly) \
 		   $(call cc-option,-fno-var-tracking)
 endif
 
-ifdef CONFIG_FUNCTION_TRACER
-ifdef CONFIG_HAVE_FENTRY
-CC_USING_FENTRY	:= $(call cc-option, -mfentry -DCC_USING_FENTRY)
-endif
-KBUILD_CFLAGS	+= -pg $(CC_USING_FENTRY)
-KBUILD_AFLAGS	+= $(CC_USING_FENTRY)
-ifdef CONFIG_DYNAMIC_FTRACE
-	ifdef CONFIG_HAVE_C_RECORDMCOUNT
-		BUILD_C_RECORDMCOUNT := y
-		export BUILD_C_RECORDMCOUNT
-	endif
-endif
-endif
 
 # We trigger additional mismatches with less inlining
 ifdef CONFIG_DEBUG_SECTION_MISMATCH
