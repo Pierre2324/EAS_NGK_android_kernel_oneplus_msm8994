@@ -55,10 +55,8 @@ unsigned int __read_mostly sysctl_sched_wake_to_idle = 0;
  */
 unsigned int sysctl_sched_latency = 6000000ULL;
 unsigned int normalized_sysctl_sched_latency = 6000000ULL;
-
 unsigned int sysctl_sched_is_big_little = 0;
 unsigned int sysctl_sched_sync_hint_enable = 1;
-
 unsigned int sysctl_sched_cstate_aware = 1;
 /*
  * The initial- and re-scaling of tunables is configurable
@@ -5432,9 +5430,9 @@ static int select_idle_sibling(struct task_struct *p, int target)
 	struct sched_domain *sd;
 	struct sched_group *sg;
 	int i = task_cpu(p);
-	int best_idle_cpu = -1;
-	int best_idle_cstate = INT_MAX;
-	unsigned long best_idle_capacity = ULONG_MAX;
+	int best_idle = -1;
+	int best_idle_cstate = -1;
+	int best_idle_capacity = INT_MAX;
 
 	if (!sysctl_sched_cstate_aware) {
 		if (idle_cpu(target))
@@ -5460,20 +5458,18 @@ static int select_idle_sibling(struct task_struct *p, int target)
 
 			if (sysctl_sched_cstate_aware) {
 				for_each_cpu_and(i, tsk_cpus_allowed(p), sched_group_cpus(sg)) {
-
-					int idle_idx = idle_get_state_idx(cpu_rq(i));
-					unsigned long new_usage = boosted_task_utilization(p);
+					struct rq *rq = cpu_rq(i);
+					int idle_idx = idle_get_state_idx(rq);
+					unsigned long new_usage = boosted_task_util(p);
 					unsigned long capacity_orig = capacity_orig_of(i);
-
 					if (new_usage > capacity_orig || !idle_cpu(i))
 						goto next;
 
 					if (i == target && new_usage <= capacity_curr_of(target))
 						return target;
 
-					if (idle_idx < best_idle_cstate &&
-					    capacity_orig <= best_idle_capacity) {
-						best_idle_cpu = i;
+					if (best_idle < 0 || (idle_idx < best_idle_cstate && capacity_orig <= best_idle_capacity)) {
+						best_idle = i;
 						best_idle_cstate = idle_idx;
 						best_idle_capacity = capacity_orig;
 					}
@@ -5493,8 +5489,8 @@ next:
 		} while (sg != sd->groups);
 	}
 
-	if (best_idle_cpu >= 0)
-		target = best_idle_cpu;
+	if (best_idle > 0)
+		target = best_idle;
 
 done:
 	return target;
