@@ -4017,8 +4017,6 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 		    cpu_overutilized(rq->cpu))
 			rq->rd->overutilized = true;
 
-		schedtune_enqueue_task(p, cpu_of(rq));
-
 		/*
 		 * We want to potentially trigger a freq switch
 		 * request only for tasks that are waking up; this is
@@ -4029,6 +4027,10 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 		if (task_new || task_wakeup)
 			update_capacity_of(cpu_of(rq));
 	}
+
+	/* Update SchedTune accouting */
+	schedtune_enqueue_task(p, cpu_of(rq));
+
 #endif /* CONFIG_SMP */
 
 	hrtick_update(rq);
@@ -4094,7 +4096,6 @@ static void dequeue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 #ifdef CONFIG_SMP
 
 	if (!se) {
-		schedtune_dequeue_task(p, cpu_of(rq));
 
 		/*
 		 * We want to potentially trigger a freq switch
@@ -4111,6 +4112,9 @@ static void dequeue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 				set_cfs_cpu_capacity(cpu_of(rq), false, 0);
 		}
 	}
+
+	/* Update SchedTune accouting */
+	schedtune_dequeue_task(p, cpu_of(rq));
 
 #endif /* CONFIG_SMP */
 
