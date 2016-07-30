@@ -64,7 +64,10 @@ static DEFINE_SPINLOCK(suspend_lock);
 
 #define TAG "msm_adreno_tz: "
 
-static unsigned int adrenoboost = 10000;
+#if 1
+static unsigned int adrenoboost = 1;
+#endif
+
 static u64 suspend_time;
 static u64 suspend_start;
 static unsigned long acc_total, acc_relative_busy;
@@ -95,6 +98,7 @@ u64 suspend_time_ms(void)
 	return time_diff;
 }
 
+#if 1
 static ssize_t adrenoboost_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -109,7 +113,7 @@ static ssize_t adrenoboost_save(struct device *dev,
 {
 	int input;
 	sscanf(buf, "%d ", &input);
-	if (input < 0 || input > 50000) {
+	if (input < 0 || input > 3) {
 		adrenoboost = 0;
 	} else {
 		adrenoboost = input;
@@ -117,7 +121,7 @@ static ssize_t adrenoboost_save(struct device *dev,
 
 	return count;
 }
-
+#endif
 
 static ssize_t gpu_load_show(struct device *dev,
 		struct device_attribute *attr,
@@ -164,8 +168,10 @@ static ssize_t suspend_time_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%llu\n", time_diff);
 }
 
+#if 1
 static DEVICE_ATTR(adrenoboost, 0644,
 		adrenoboost_show, adrenoboost_save);
+#endif
 
 static DEVICE_ATTR(gpu_load, 0444, gpu_load_show, NULL);
 
@@ -176,7 +182,9 @@ static DEVICE_ATTR(suspend_time, 0444,
 static const struct device_attribute *adreno_tz_attr_list[] = {
 		&dev_attr_gpu_load,
 		&dev_attr_suspend_time,
+#if 1
 		&dev_attr_adrenoboost,
+#endif
 		NULL
 };
 
@@ -317,7 +325,6 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq,
 	int val, level = 0;
 	unsigned int scm_data[3];
 	static int busy_bin, frame_flag;
-
 	/* keeps stats.private_data == NULL   */
 	result = devfreq->profile->get_dev_status(devfreq->dev.parent, &stats);
 	if (result) {
@@ -343,16 +350,16 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq,
 	priv->bin.total_time += stats.total_time;
 	// AP: priv->bin.busy_time += stats.busy_time;
 
+#if 1
 	// scale busy time up based on adrenoboost parameter, only if MIN_BUSY exceeded...
 	if ((unsigned int)(priv->bin.busy_time + stats.busy_time) >= MIN_BUSY) {
-		// sanitize adrenoboost module parameter
-		if ((adrenoboost < 0) || (adrenoboost > 3))
-			adrenoboost = 0;
-
 		priv->bin.busy_time += stats.busy_time * (1 + (adrenoboost*3)/2);
 	} else {
 		priv->bin.busy_time += stats.busy_time;
 	}
+#else
+	priv->bin.busy_time += stats.busy_time;
+#endif
 
 	/* Update the GPU load statistics */
 	compute_work_load(&stats, priv, devfreq);
@@ -367,7 +374,6 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq,
 		(unsigned int) priv->bin.busy_time < MIN_BUSY) {
 		return 0;
 	}
-
 	if ((stats.busy_time * 100 / stats.total_time) > BUSY_BIN) {
 		busy_bin += stats.busy_time;
 		if (stats.total_time > LONG_FRAME)
@@ -376,13 +382,11 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq,
 		busy_bin = 0;
 		frame_flag = 0;
 	}
-
 	level = devfreq_get_freq_level(devfreq, stats.current_frequency);
 	if (level < 0) {
 		pr_err(TAG "bad freq %ld\n", stats.current_frequency);
 		return level;
 	}
-
 	/*
 	 * If there is an extended block of busy processing,
 	 * increase frequency.  Otherwise run the normal algorithm.
@@ -397,32 +401,12 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq,
 		scm_data[0] = level;
 		scm_data[1] = priv->bin.total_time;
 		scm_data[2] = priv->bin.busy_time + (level * adrenoboost);
+		scm_data[2] = priv->bin.busy_time;
 		__secure_tz_update_entry3(scm_data, sizeof(scm_data),
 					&val, sizeof(val), priv->is_64);
 	}
-
-	if (adrenoboost == 0)	// only if gpu boost is not enabled by user
-	{
-		// AP: Tweak 27 MHz frequency to be used a bit more
-		if ((val == 0) && (level == 5) &&	// (5 = 180 MHz step)
-			((priv->bin.busy_time * 100 / priv->bin.total_time) < 98))
-			val = 1;
-	}
-
 	priv->bin.total_time = 0;
 	priv->bin.busy_time = 0;
-
-	if (adrenoboost == 0)	// only if gpu boost is not enabled by user
-	{
-		// AP: Tweak not to peak up when we come from 27 MHz and need to ramp up
-		if ((val < -1) && (level == 6))
-			val = -1;
-
-		// AP: In general we do not ramp up more than 2 steps at once
-		if (val < -2)
-			val = -2;
-	}
-
 	/*
 	 * If the decision is to move to a different level, make sure the GPU
 	 * frequency changes.
@@ -432,7 +416,6 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq,
 		level = max(level, 0);
 		level = min_t(int, level, devfreq->profile->max_state - 1);
 	}
-
 	*freq = devfreq->profile->freq_table[level];
 	return 0;
 }
