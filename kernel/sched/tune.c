@@ -17,6 +17,7 @@ bool schedtune_initialized = false;
 
 unsigned int sysctl_sched_cfs_boost __read_mostly;
 
+extern struct reciprocal_value schedtune_spc_rdiv;
 extern struct target_nrg schedtune_target_nrg;
 
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
@@ -1053,6 +1054,8 @@ schedtune_init(void)
 #else
 	pr_info("schedtune: configured to support global boosting only\n");
 #endif
+
+	schedtune_spc_rdiv = reciprocal_value(100);
 
 	return 0;
 
