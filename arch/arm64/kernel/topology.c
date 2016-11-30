@@ -382,6 +382,11 @@ static inline const struct sched_group_energy *cpu_cluster_energy(int cpu)
 	return sge;
 }
 
+static int cpu_cpu_flags(void)
+{
+	return SD_ASYM_CPUCAPACITY;
+}
+
 static inline int cpu_corepower_flags(void)
 {
 	return SD_SHARE_PKG_RESOURCES  | SD_SHARE_POWERDOMAIN | \
@@ -392,7 +397,7 @@ static struct sched_domain_topology_level arm64_topology[] = {
 #ifdef CONFIG_SCHED_MC
 	{ cpu_coregroup_mask, cpu_corepower_flags, cpu_core_energy, SD_INIT_NAME(MC) },
 #endif
-	{ cpu_cpu_mask, 0, cpu_cluster_energy, SD_INIT_NAME(DIE) },
+	{ cpu_cpu_mask, cpu_cpu_flags, cpu_cluster_energy, SD_INIT_NAME(DIE) },
 	{ NULL, },
 };
 
