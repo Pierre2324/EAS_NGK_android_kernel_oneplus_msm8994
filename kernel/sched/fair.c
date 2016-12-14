@@ -5422,7 +5422,7 @@ static inline int find_best_target(struct task_struct *p, bool boosted)
 	return target_cpu;
 }
 
-static int energy_aware_wake_cpu(struct task_struct *p, int target, int sync)
+static int energy_aware_wake_cpu(struct task_struct *p, int target)
 {
 	struct sched_domain *sd;
 	struct sched_group *sg, *sg_target;
