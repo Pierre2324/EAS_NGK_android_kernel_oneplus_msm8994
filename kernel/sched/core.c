@@ -2855,7 +2855,8 @@ static void sched_freq_tick_walt(int cpu)
 		return sched_freq_tick_pelt(cpu);
 
 	/*
-	 * Add a margin to the WALT utilization.
+	 * Add a margin to the WALT utilization to check if we will need to
+	 * increase frequency.
 	 * NOTE: WALT tracks a single CPU signal for all the scheduling
 	 * classes, thus this margin is going to be added to the DL class as
 	 * well, which is something we do not do in sched_freq_tick_pelt case.
@@ -2864,8 +2865,7 @@ static void sched_freq_tick_walt(int cpu)
 	 * Here we're adding margin, but we're also adding margin in cpufreq.
 	 * There shouldn't be a double addition.
 	 */
-	cpu_utilization = add_capacity_margin(cpu_utilization);
-	if (cpu_utilization <= capacity_curr)
+	if (add_capacity_margin(cpu_utilization) <= capacity_curr)
 		return;
 
 	/*
