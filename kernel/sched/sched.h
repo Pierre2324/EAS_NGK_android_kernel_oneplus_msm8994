@@ -817,7 +817,7 @@ struct sched_group {
 
 	unsigned int group_weight;
 	struct sched_group_capacity *sgc;
-	struct sched_group_energy *sge;
+	const struct sched_group_energy *sge;
 
 	/*
 	 * The CPUs this group covers.
