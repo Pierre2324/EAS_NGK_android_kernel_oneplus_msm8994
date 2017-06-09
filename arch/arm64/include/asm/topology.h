@@ -40,6 +40,9 @@ static inline void store_cpu_topology(unsigned int cpuid) { }
 
 #endif
 
+#define arch_update_cpu_capacity update_cpu_power_capacity
+extern void update_cpu_power_capacity(int cpu);
+
 #include <asm-generic/topology.h>
 
 #endif /* _ASM_ARM_TOPOLOGY_H */
