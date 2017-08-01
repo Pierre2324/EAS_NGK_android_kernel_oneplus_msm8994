@@ -1360,6 +1360,10 @@ struct sched_rt_entity {
 	bool schedtune_enqueued;
 	struct hrtimer schedtune_timer;
 
+	/* Accesses for these must be guarded by rq->lock of the task's rq */
+	bool schedtune_enqueued;
+	struct hrtimer schedtune_timer;
+
 	struct sched_rt_entity *back;
 #ifdef CONFIG_RT_GROUP_SCHED
 	struct sched_rt_entity	*parent;
