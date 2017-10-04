@@ -37,6 +37,7 @@
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
+#include <linux/proc_fs.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/of.h>
@@ -146,6 +147,8 @@ struct fpc1020_data {
 };
 
 extern bool s1302_is_keypad_stopped(void);
+
+static struct fpc1020_data *fpc1020_g = NULL;
 
 static int fpc1020_request_named_gpio(struct fpc1020_data *fpc1020,
 		const char *label, int *gpio)
@@ -279,7 +282,15 @@ static ssize_t irq_get(struct device* device,
 			     char* buffer)
 {
 	struct fpc1020_data* fpc1020 = dev_get_drvdata(device);
-	int irq = gpio_get_value(fpc1020->irq_gpio);
+	bool irq_enabled;
+	int irq;
+
+	spin_lock(&fpc1020->irq_lock);
+	irq_enabled = fpc1020->irq_enabled;
+	spin_unlock(&fpc1020->irq_lock);
+
+	irq = irq_enabled && gpio_get_value(fpc1020->irq_gpio);
+
 	return scnprintf(buffer, PAGE_SIZE, "%i\n", irq);
 }
 
@@ -900,6 +911,26 @@ static const struct attribute_group attribute_group = {
 	.attrs = attributes,
 };
 
+static ssize_t proximity_state_control(struct file *file, const char __user *buf,
+	size_t count, loff_t *lo)
+{
+	struct fpc1020_data *fpc1020 = fpc1020_g;
+	int val;
+
+	sscanf(buf, "%d", &val);
+
+	if (!fpc1020->screen_state)
+		set_fpc_irq(fpc1020, !val);
+
+	return count;
+}
+
+static const struct file_operations proximity_status = {
+	.write = proximity_state_control,
+	.open = simple_open,
+	.owner = THIS_MODULE,
+};
+
 int fpc1020_input_init(struct fpc1020_data *fpc1020)
 {
 	int error = 0;
@@ -972,8 +1003,7 @@ static void fpc1020_suspend_resume(struct work_struct *work)
 		set_fpc_irq(fpc1020, true);
 		set_fingerprintd_nice(0);
 	}
-	else
-		/*
+	else/*
 		 * Elevate fingerprintd priority when screen is off to ensure
 		 * the fingerprint sensor is responsive and that the haptic
 		 * response on successful verification always fires.
@@ -1046,9 +1076,10 @@ static int fpc1020_probe(struct spi_device *spi)
 	struct device *dev = &spi->dev;
 	int rc = 0;
 	size_t i;
-	int irqf;
+	unsigned long irqf;
 	struct device_node *np = dev->of_node;
 	u32 val;
+	struct proc_dir_entry *procdir;
 	struct fpc1020_data *fpc1020 = devm_kzalloc(dev, sizeof(*fpc1020),
 			GFP_KERNEL);
 	if (!fpc1020) {
@@ -1059,6 +1090,8 @@ static int fpc1020_probe(struct spi_device *spi)
 	}
 
 	printk(KERN_INFO "%s\n", __func__);
+
+	fpc1020_g = fpc1020;
 
 	fpc1020->dev = dev;
 	dev_set_drvdata(dev, fpc1020);
@@ -1192,6 +1225,9 @@ static int fpc1020_probe(struct spi_device *spi)
     fpc1020->screen_state = 1;
     #endif
 
+	spin_lock_init(&fpc1020->irq_lock);
+	fpc1020->irq_enabled = true;
+
 	irqf = IRQF_TRIGGER_RISING | IRQF_ONESHOT;
 	mutex_init(&fpc1020->lock);
 	rc = devm_request_threaded_irq(dev, gpio_to_irq(fpc1020->irq_gpio),
@@ -1241,6 +1277,11 @@ static int fpc1020_probe(struct spi_device *spi)
     {
         push_component_info(FINGERPRINTS,"fpc1150" , gpio_get_value(fpc1020->vendor_gpio)?"(FPC)DT" : "(FPC)CT");
     }
+	
+	procdir = proc_mkdir("fingerprint", NULL);
+
+	proc_create_data("proximity_status", S_IWUSR, procdir,
+		&proximity_status, NULL);
 
 	dev_info(dev, "%s: ok\n", __func__);
 exit:
