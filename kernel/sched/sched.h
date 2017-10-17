@@ -12,6 +12,7 @@
 #include "cpupri.h"
 #include "cpudeadline.h"
 #include "cpuacct.h"
+#include <linux/static_key.h>
 
 struct rq;
 struct cpuidle_state;
