@@ -691,6 +691,9 @@ int cpufreq_generic_init(struct cpufreq_policy *policy,
 		struct cpufreq_frequency_table *table,
 		unsigned int transition_latency);
 
+struct sched_domain;
+unsigned long cpufreq_scale_freq_capacity(struct sched_domain *sd, int cpu);
+
 /*********************************************************************
  *                         CPUFREQ STATS                             *
  *********************************************************************/
@@ -708,7 +711,4 @@ static inline void acct_update_power(struct task_struct *p, cputime_t cputime)
 #endif
 void msm_do_pm_boost(bool do_boost);
 
-struct sched_domain;
-unsigned long cpufreq_scale_freq_capacity(struct sched_domain *sd, int cpu);
-unsigned long cpufreq_scale_max_freq_capacity(int cpu);
 #endif /* _LINUX_CPUFREQ_H */
