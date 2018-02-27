@@ -11,6 +11,7 @@
 #include <linux/irq_work.h>
 
 #include "walt.h"
+#include "tune.h" 
 
 #include "tune.h"
 
