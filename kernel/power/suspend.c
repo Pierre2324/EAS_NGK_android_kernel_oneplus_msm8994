@@ -32,7 +32,6 @@
 #include <linux/devfreq_boost.h>
 #include <linux/cpu_boost.h>
 
-
 #include "power.h"
 
 struct pm_sleep_state pm_states[PM_SUSPEND_MAX] = {
@@ -332,6 +331,7 @@ static void suspend_finish(void)
 {
 	devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 2500);
 	do_input_boost_max();
+	msm_do_pm_boost(true);
 	suspend_thaw_processes();
 	pm_notifier_call_chain(PM_POST_SUSPEND);
 	pm_restore_console();

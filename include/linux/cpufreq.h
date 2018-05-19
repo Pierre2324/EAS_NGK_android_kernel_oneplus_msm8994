@@ -706,6 +706,7 @@ static inline void acct_update_power(struct task_struct *p, cputime_t cputime)
 }
 
 #endif
+void msm_do_pm_boost(bool do_boost);
 
 struct sched_domain;
 unsigned long cpufreq_scale_freq_capacity(struct sched_domain *sd, int cpu);
