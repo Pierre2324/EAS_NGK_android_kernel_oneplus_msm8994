@@ -117,7 +117,7 @@ SYSCALL_DEFINE1(uselib, const char __user *, library)
 	if (IS_ERR(tmp))
 		goto out;
 
-	file = do_filp_open(AT_FDCWD, tmp, &uselib_flags);
+	file = do_filp_open(AT_FDCWD, tmp, &uselib_flags, LOOKUP_FOLLOW);
 	putname(tmp);
 	error = PTR_ERR(file);
 	if (IS_ERR(file))
@@ -781,7 +781,7 @@ struct file *open_exec(const char *name)
 		.lookup_flags = LOOKUP_FOLLOW,
 	};
 
-	file = do_filp_open(AT_FDCWD, &tmp, &open_exec_flags);
+	file = do_filp_open(AT_FDCWD, &tmp, &open_exec_flags, LOOKUP_FOLLOW);
 	if (IS_ERR(file))
 		goto out;
 

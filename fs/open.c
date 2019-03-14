@@ -900,8 +900,8 @@ static inline int build_open_flags(int flags, umode_t mode, struct open_flags *o
 struct file *file_open_name(struct filename *name, int flags, umode_t mode)
 {
 	struct open_flags op;
-	int err = build_open_flags(flags, mode, &op);
-	return err ? ERR_PTR(err) : do_filp_open(AT_FDCWD, name, &op);
+	int lookup = build_open_flags(flags, mode, &op);
+	return do_filp_open(AT_FDCWD, name, &op, lookup);
 }
 
 /**
@@ -941,8 +941,9 @@ EXPORT_SYMBOL(file_open_root);
 long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 {
 	struct open_flags op;
-	int fd = build_open_flags(flags, mode, &op);
-	struct filename *tmp;
+	int lookup = build_open_flags(flags, mode, &op);
+	struct filename *tmp = getname(filename);
+	int fd = PTR_ERR(tmp);
 
 	if (fd)
 		return fd;

@@ -3120,10 +3120,9 @@ out2:
 }
 
 struct file *do_filp_open(int dfd, struct filename *pathname,
-		const struct open_flags *op)
+		const struct open_flags *op, int flags)
 {
 	struct nameidata nd;
-	int flags = op->lookup_flags;
 	struct file *filp;
 
 	filp = path_openat(dfd, pathname, &nd, op, flags | LOOKUP_RCU);
