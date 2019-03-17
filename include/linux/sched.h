@@ -2103,6 +2103,7 @@ static inline int sched_update_freq_max_load(const cpumask_t *cpumask)
 #define PF_RANDOMIZE	0x00400000	/* randomize virtual address space */
 #define PF_SWAPWRITE	0x00800000	/* Allowed to write to swap */
 #define PF_PERF_CRITICAL 0x01000000	/* Thread is performance-critical */
+#define PF_LOW_POWER	0x02000000	/* Thread is low-power */
 #define PF_NO_SETAFFINITY 0x04000000	/* Userland is not allowed to meddle with cpus_allowed */
 #define PF_MCE_EARLY    0x08000000      /* Early kill for mce process policy */
 #define PF_SPREAD_PAGE  0x01000000
