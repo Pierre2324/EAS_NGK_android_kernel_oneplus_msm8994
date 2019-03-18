@@ -395,7 +395,6 @@ GEN_OPT_FLAGS := $(call cc-option,$(ARM_ARCH_OPT),-march=armv8-a+crypto+crc) \
  -fivopts \
  -fsection-anchors \
  -Wno-array-bounds \
- -fno-store-merging \
  -pipe \
  $(GRAPHITE) \
  $(FLAGS_OPTIMIZE)
@@ -437,7 +436,7 @@ KBUILD_CFLAGS_KERNEL :=
 		   -std=gnu89 -Wno-unused-const-variable -Wno-misleading-indentation \
            -Wno-memset-transposed-args  -Wno-bool-compare -Wno-logical-not-parentheses \
 		   -Wno-switch-bool \
-		   -Wno-bool-operation -Wno-nonnull -Wno-switch-unreachable -Wno-format-truncation -Wno-format-overflow -Wno-duplicate-decl-specifier -Wno-memset-elt-size -Wno-int-in-bool-context \
+		   -Wno-nonnull \
 		   $(GEN_OPT_FLAGS) \
 		   $(GRAPHITE) \
 		   $(FLAGS_OPTIMIZE)
