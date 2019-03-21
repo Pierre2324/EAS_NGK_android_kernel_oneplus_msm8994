@@ -694,6 +694,10 @@ static int do_dentry_open(struct file *f,
 		return 0;
 	}
 
+	if (S_ISREG(inode->i_mode))
+		f->f_mode |= FMODE_SPLICE_WRITE | FMODE_SPLICE_READ;
+
+
 	f->f_op = fops_get(inode->i_fop);
 
 	error = security_file_open(f, cred);
@@ -900,8 +904,8 @@ static inline int build_open_flags(int flags, umode_t mode, struct open_flags *o
 struct file *file_open_name(struct filename *name, int flags, umode_t mode)
 {
 	struct open_flags op;
-	int lookup = build_open_flags(flags, mode, &op);
-	return do_filp_open(AT_FDCWD, name, &op, lookup);
+	int err = build_open_flags(flags, mode, &op);
+	return err ? ERR_PTR(err) : do_filp_open(AT_FDCWD, name, &op);
 }
 
 /**
@@ -941,9 +945,8 @@ EXPORT_SYMBOL(file_open_root);
 long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 {
 	struct open_flags op;
-	int lookup = build_open_flags(flags, mode, &op);
-	struct filename *tmp = getname(filename);
-	int fd = PTR_ERR(tmp);
+	int fd = build_open_flags(flags, mode, &op);
+	struct filename *tmp;
 
 	if (fd)
 		return fd;
@@ -952,19 +955,18 @@ long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 	if (IS_ERR(tmp))
 		return PTR_ERR(tmp);
 
-	if (!IS_ERR(tmp)) {
-		fd = get_unused_fd_flags(flags);
-		if (fd >= 0) {
-			struct file *f = do_filp_open(dfd, tmp, &op, lookup);
-			if (IS_ERR(f)) {
-				put_unused_fd(fd);
-				fd = PTR_ERR(f);
-			} else {
-				fsnotify_open(f);
-				fd_install(fd, f);
-			}
+	fd = get_unused_fd_flags(flags);
+	if (fd >= 0) {
+		struct file *f = do_filp_open(dfd, tmp, &op);
+		if (IS_ERR(f)) {
+			put_unused_fd(fd);
+			fd = PTR_ERR(f);
+		} else {
+			fsnotify_open(f);
+			fd_install(fd, f);
 		}
-
+	}
+	putname(tmp);
 	return fd;
 }
 
