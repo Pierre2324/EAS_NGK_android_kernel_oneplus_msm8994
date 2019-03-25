@@ -138,6 +138,8 @@ struct fpc1020_data {
 	struct notifier_block fb_notif;
     #endif
 	struct work_struct pm_work;
+	bool irq_enabled;
+	spinlock_t irq_lock;
 };
 
 extern bool s1302_is_keypad_stopped(void);
@@ -296,6 +298,24 @@ static DEVICE_ATTR(irq, S_IRUSR | S_IWUSR, irq_get, irq_ack);
 #ifdef VENDOR_EDIT //WayneChang, 2015/12/02, add for key to abs, simulate key in abs through virtual key system
 extern bool virtual_key_enable;
 #endif
+
+static void set_fpc_irq(struct fpc1020_data *fpc1020, bool enable)
+{
+	bool irq_enabled;
+
+	spin_lock(&fpc1020->irq_lock);
+	irq_enabled = fpc1020->irq_enabled;
+	fpc1020->irq_enabled = enable;
+	spin_unlock(&fpc1020->irq_lock);
+
+	if (enable == irq_enabled)
+		return;
+
+	if (enable)
+		enable_irq(gpio_to_irq(fpc1020->irq_gpio));
+	else
+		disable_irq(gpio_to_irq(fpc1020->irq_gpio));
+}
 
 static ssize_t report_home_set(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
