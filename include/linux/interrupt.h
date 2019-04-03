@@ -194,6 +194,8 @@ extern int check_wakeup_irqs(void);
 #else
 static inline int check_wakeup_irqs(void) { return 0; }
 #endif
+extern void unaffine_perf_irqs(void);
+extern void reaffine_perf_irqs(void);
 #if defined(CONFIG_SMP)
 
 extern cpumask_var_t irq_default_affinity;
