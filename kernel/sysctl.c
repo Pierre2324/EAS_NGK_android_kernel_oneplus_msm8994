@@ -444,6 +444,7 @@ static struct ctl_table kern_table[] = {
 		.proc_handler	= sched_hmp_proc_update_handler,
 	},
 #endif
+#if 0
 	{
 		.procname	= "sched_boost",
 		.data		= &sysctl_sched_boost,
@@ -451,6 +452,7 @@ static struct ctl_table kern_table[] = {
 		.mode		= 0644,
 		.proc_handler	= sched_boost_handler,
 	},
+#endif
 	{
 		.procname	= "sched_enable_power_aware",
 		.data		= &sysctl_sched_enable_power_aware,
