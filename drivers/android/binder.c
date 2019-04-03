@@ -2875,7 +2875,6 @@ retry:
 
 	binder_unlock(__func__);
 #if defined(VENDOR_EDIT) && defined(CONFIG_CGROUP_SCHED)
-	skip_cfs_throttle(0);
 #endif
 
 	trace_binder_wait_for_work(wait_for_proc_work,
@@ -2904,7 +2903,6 @@ retry:
 	}
 
 #if defined(VENDOR_EDIT) && defined(CONFIG_CGROUP_SCHED)
-	skip_cfs_throttle(1);
 #endif
 	binder_lock(__func__);
 
@@ -3441,7 +3439,6 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		goto err_unlocked;
 
 #if defined(VENDOR_EDIT) && defined(CONFIG_CGROUP_SCHED)
-	skip_cfs_throttle(1);
 #endif
 	binder_lock(__func__);
 	thread = binder_get_thread(proc);
@@ -3498,7 +3495,6 @@ err:
 		thread->looper &= ~BINDER_LOOPER_STATE_NEED_RETURN;
 	binder_unlock(__func__);
 #if defined(VENDOR_EDIT) && defined(CONFIG_CGROUP_SCHED)
-	skip_cfs_throttle(0);
 #endif
 	wait_event_interruptible(binder_user_error_wait, binder_stop_on_user_error < 2);
 	if (ret && ret != -ERESTARTSYS)

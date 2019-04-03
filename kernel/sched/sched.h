@@ -192,9 +192,6 @@ struct cfs_rq;
 struct rt_rq;
 
 extern struct list_head task_groups;
-#ifdef VENDOR_EDIT
-void skip_cfs_throttle(int skip);
-#endif
 
 struct cfs_bandwidth {
 #ifdef CONFIG_CFS_BANDWIDTH

@@ -4196,16 +4196,13 @@ int access_process_vm(struct task_struct *tsk, unsigned long addr,
 	struct mm_struct *mm;
 	int ret;
 
-	skip_cfs_throttle(1);
 	mm = get_task_mm(tsk);
 	if (!mm) {
-		skip_cfs_throttle(0);
 		return 0;
 	}
 
 	ret = __access_remote_vm(tsk, mm, addr, buf, len, write);
 	mmput(mm);
-	skip_cfs_throttle(0);
 
 	return ret;
 }
