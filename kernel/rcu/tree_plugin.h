@@ -2558,17 +2558,16 @@ static void __init rcu_organize_nocb_kthreads(struct rcu_state *rsp)
 	 */
 	for_each_cpu(cpu, rcu_nocb_mask) {
 		rdp = per_cpu_ptr(rsp->rda, cpu);
-		if (rdp->cpu >= nl) {
-			/* New leader, set up for followers & next leader. */
-			nl = DIV_ROUND_UP(rdp->cpu + 1, ls) * ls;
-			rdp->nocb_leader = rdp;
-			rdp_leader = rdp;
-		} else {
-			/* Another follower, link to previous leader. */
-			rdp->nocb_leader = rdp_leader;
-			rdp_prev->nocb_next_follower = rdp;
-		}
-		rdp_prev = rdp;
+
+#ifdef CONFIG_RCU_NOCB_CPU_BIND_LP
+		t = kthread_run_low_power(rcu_nocb_kthread, rdp,
+			"rcuo%c/%d", rsp->abbr, cpu);
+#else
+		t = kthread_run(rcu_nocb_kthread, rdp,
+				"rcuo%c/%d", rsp->abbr, cpu);
+#endif
+		BUG_ON(IS_ERR(t));
+		ACCESS_ONCE(rdp->nocb_kthread) = t;
 	}
 }
 
