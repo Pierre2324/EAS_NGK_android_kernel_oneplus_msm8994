@@ -7595,7 +7595,7 @@ static struct rq *find_busiest_queue(struct lb_env *env,
 				     struct sched_group *group)
 {
 	struct rq *busiest = NULL, *rq;
-	unsigned long busiest_load = 0, busiest_power = 1;
+	unsigned long max_load = 0;
 	int i;
 
 	if (sched_enable_hmp)
