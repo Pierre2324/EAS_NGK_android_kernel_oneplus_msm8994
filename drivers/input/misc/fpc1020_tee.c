@@ -968,6 +968,7 @@ static void fpc1020_suspend_resume(struct work_struct *work)
 	if (fpc1020->screen_state) {
 		set_fpc_irq(fpc1020, true);
 		set_fingerprintd_nice(0);
+	}
 	else
 		/*
 		 * Elevate fingerprintd priority when screen is off to ensure
@@ -975,7 +976,6 @@ static void fpc1020_suspend_resume(struct work_struct *work)
 		 * response on successful verification always fires.
 		 */
 		set_fingerprintd_nice(-20);
-	}
 
 	sysfs_notify(&fpc1020->dev->kobj, NULL,
 				dev_attr_screen_state.attr.name);
