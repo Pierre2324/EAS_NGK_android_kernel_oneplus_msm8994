@@ -258,12 +258,12 @@ FLAGS_OPTIMIZE := -falign-functions=32 -fgcse-las -fivopts \
 	-floop-nest-optimize \
 	-floop-parallelize-all \
 	-floop-strip-mine \
-	-fmodulo-sched \
-	-fmodulo-sched-allow-regmoves \
 	-frerun-cse-after-loop \
 	-funroll-loops \
 	-ftree-vectorize \
 	-frename-registers \
+	#-fmodulo-sched \
+	#-fmodulo-sched-allow-regmoves \
 	$(GRAPHITE)
 
 GRAPHITE = -fgraphite -fgraphite-identity -floop-interchange -ftree-loop-distribution -floop-strip-mine -floop-block -ftree-loop-linear \
@@ -358,7 +358,7 @@ LD		= $(CROSS_COMPILE)ld
 CC		= $(which ccache) $(CROSS_COMPILE)gcc
 LD		+= -Ofast --strip-debug
 CC		+= -Ofast $(FLAGS_OPTIMIZE) $(GRAPHITE)
-CC		+= -fmodulo-sched -fmodulo-sched-allow-regmoves
+#CC		+= -fmodulo-sched -fmodulo-sched-allow-regmoves
 CC		+= -fgraphite-identity -floop-block -floop-interchange -floop-strip-mine
 CC		+= -ftree-loop-linear -ftree-loop-distribution
 CC		+= -mlow-precision-recip-sqrt -mpc-relative-literal-loads
@@ -392,12 +392,12 @@ GEN_OPT_FLAGS := $(call cc-option,$(ARM_ARCH_OPT),-march=armv8-a+crypto+crc+fp+s
  -g0 \
  -DNDEBUG \
  -fomit-frame-pointer \
- -fmodulo-sched \
- -fmodulo-sched-allow-regmoves \
  -fivopts \
  -fsection-anchors \
  -Wno-array-bounds \
  -pipe \
+ #-fmodulo-sched \
+ #-fmodulo-sched-allow-regmoves \
  $(GRAPHITE) \
  $(FLAGS_OPTIMIZE)
  
