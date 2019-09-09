@@ -5161,8 +5161,6 @@ fail_cmd:
 	return rc;
 }
 
-<<<<<<< HEAD
-=======
 int q6asm_dts_eagle_set(struct audio_client *ac, int param_id, uint32_t size,
 			void *data, struct param_outband *po, int m_id)
 {
@@ -5388,7 +5386,6 @@ fail_cmd:
 	return rc;
 }
 
->>>>>>> 7cea7292a17... sound: DTS-Eagle integration
 static int __q6asm_set_volume(struct audio_client *ac, int volume, int instance)
 {
 	struct asm_volume_ctrl_master_gain vol;

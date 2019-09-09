@@ -729,16 +729,6 @@ extern int migrate_task_to(struct task_struct *p, int cpu);
 extern int migrate_swap(struct task_struct *, struct task_struct *);
 #endif /* CONFIG_NUMA_BALANCING */
 
-static inline u64 rq_clock(struct rq *rq)
-{
-	return rq->clock;
-}
-
-static inline u64 rq_clock_task(struct rq *rq)
-{
-	return rq->clock_task;
-}
-
 #ifdef CONFIG_SMP
 
 extern void sched_ttwu_pending(void);
@@ -1166,9 +1156,9 @@ static const u32 prio_to_wmult[40] = {
 #define ENQUEUE_WAKEUP		1
 #define ENQUEUE_HEAD		2
 #ifdef CONFIG_SMP
-#define ENQUEUE_MIGRATED	4
+#define ENQUEUE_WAKING		4	/* sched_class::task_waking was called */
 #else
-#define ENQUEUE_MIGRATED	0
+#define ENQUEUE_WAKING		0
 #endif
 #define ENQUEUE_REPLENISH	8
 #define ENQUEUE_WAKEUP_NEW	16
@@ -1204,6 +1194,7 @@ struct sched_class {
 	void (*migrate_task_rq)(struct task_struct *p, int next_cpu);
 
 	void (*post_schedule) (struct rq *this_rq);
+	void (*task_waking) (struct task_struct *task);
 	void (*task_woken) (struct rq *this_rq, struct task_struct *task);
 
 	void (*set_cpus_allowed)(struct task_struct *p,
