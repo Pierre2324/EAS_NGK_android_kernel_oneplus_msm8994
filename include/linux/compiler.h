@@ -252,6 +252,9 @@ static __always_inline void __assign_once_size(volatile void *p, void *res, int 
 #define READ_ONCE(x) \
 	({ typeof(x) __val; __read_once_size(&x, &__val, sizeof(__val)); __val; })
 
+#define WRITE_ONCE(x, val) \
+	({ typeof(x) __val = (val); __write_once_size(&(x), &__val, sizeof(__val)); __val; })
+
 #define ASSIGN_ONCE(val, x) \
 	({ typeof(x) __val; __val = val; __assign_once_size(&x, &__val, sizeof(__val)); __val; })
 
