@@ -671,6 +671,7 @@ KBUILD_CFLAGS	+= -Ofast -fno-inline-functions -fno-pic -fno-ipa-cp-clone -Wno-ma
 KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
 
 # Tell gcc to never replace conditional load with a non-conditional one
+KBUILD_CFLAGS	+= $(call cc-option,--param=allow-store-data-races=0)
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
 

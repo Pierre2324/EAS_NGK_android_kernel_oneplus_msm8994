@@ -48,7 +48,7 @@ struct cpufreq_suspend_t {
 	int device_suspended;
 };
 
-static DEFINE_PER_CPU(struct cpufreq_suspend_t, cpufreq_suspend);
+static DEFINE_PER_CPU(struct cpufreq_suspend_t, suspend_data);
 
 static int set_cpu_freq_raw(int cpu, unsigned long rate, bool boost_src)
 {
@@ -96,12 +96,12 @@ static int msm_cpufreq_target(struct cpufreq_policy *policy,
 	int index;
 	struct cpufreq_frequency_table *table;
 
-	mutex_lock(&per_cpu(cpufreq_suspend, policy->cpu).suspend_mutex);
+	mutex_lock(&per_cpu(suspend_data, policy->cpu).suspend_mutex);
 
 	if (target_freq == policy->cur)
 		goto done;
 
-	if (per_cpu(cpufreq_suspend, policy->cpu).device_suspended) {
+	if (per_cpu(suspend_data, policy->cpu).device_suspended) {
 		pr_debug("cpufreq: cpu%d scheduling frequency change "
 				"in suspend.\n", policy->cpu);
 		ret = -EFAULT;
@@ -129,7 +129,7 @@ static int msm_cpufreq_target(struct cpufreq_policy *policy,
 	ret = set_cpu_freq(policy, table[index].frequency,
 			   table[index].driver_data);
 done:
-	mutex_unlock(&per_cpu(cpufreq_suspend, policy->cpu).suspend_mutex);
+	mutex_unlock(&per_cpu(suspend_data, policy->cpu).suspend_mutex);
 	return ret;
 }
 
@@ -299,9 +299,9 @@ static int msm_cpufreq_suspend(void)
 	cancel_delayed_work_sync(&pm_unboost_work);
 
 	for_each_possible_cpu(cpu) {
-		mutex_lock(&per_cpu(cpufreq_suspend, cpu).suspend_mutex);
-		per_cpu(cpufreq_suspend, cpu).device_suspended = 1;
-		mutex_unlock(&per_cpu(cpufreq_suspend, cpu).suspend_mutex);
+		mutex_lock(&per_cpu(suspend_data, cpu).suspend_mutex);
+		per_cpu(suspend_data, cpu).device_suspended = 1;
+		mutex_unlock(&per_cpu(suspend_data, cpu).suspend_mutex);
 	}
 
 	return NOTIFY_DONE;
@@ -309,17 +309,13 @@ static int msm_cpufreq_suspend(void)
 
 static int msm_cpufreq_resume(void)
 {
-	int cpu;
-#ifndef CONFIG_CPU_BOOST
-	int ret;
+	int cpu, ret;
 	struct cpufreq_policy policy;
-#endif
 
 	for_each_possible_cpu(cpu) {
-		per_cpu(cpufreq_suspend, cpu).device_suspended = 0;
+		per_cpu(suspend_data, cpu).device_suspended = 0;
 	}
 
-#ifndef CONFIG_CPU_BOOST
 	/*
 	 * Freq request might be rejected during suspend, resulting
 	 * in policy->cur violating min/max constraint.
@@ -341,7 +337,6 @@ static int msm_cpufreq_resume(void)
 				cpu);
 	}
 	put_online_cpus();
-#endif
 
 	return NOTIFY_DONE;
 }
@@ -538,8 +533,8 @@ static int __init msm_cpufreq_register(void)
 	int cpu, rc;
 
 	for_each_possible_cpu(cpu) {
-		mutex_init(&(per_cpu(cpufreq_suspend, cpu).suspend_mutex));
-		per_cpu(cpufreq_suspend, cpu).device_suspended = 0;
+		mutex_init(&(per_cpu(suspend_data, cpu).suspend_mutex));
+		per_cpu(suspend_data, cpu).device_suspended = 0;
 	}
 	
 	mutex_init(&cpu_clk_lock);
@@ -551,7 +546,7 @@ static int __init msm_cpufreq_register(void)
 		/* Unblock hotplug if msm-cpufreq probe fails */
 		unregister_hotcpu_notifier(&msm_cpufreq_cpu_notifier);
 		for_each_possible_cpu(cpu)
-			mutex_destroy(&(per_cpu(cpufreq_suspend, cpu).
+			mutex_destroy(&(per_cpu(suspend_data, cpu).
 					suspend_mutex));
 		return rc;
 	}

@@ -68,6 +68,8 @@ enum ipi_msg_type {
 	IPI_IRQ_WORK,
 	IPI_WAKEUP,
 	IPI_CPU_BACKTRACE,
+	IPI_CUSTOM_FIRST,
+	IPI_CUSTOM_LAST = 15,
 };
 
 /*
@@ -595,18 +597,15 @@ static unsigned long backtrace_flag;
 
 static void smp_send_all_cpu_backtrace(void)
 {
-	unsigned int this_cpu;
+	unsigned int this_cpu = smp_processor_id();
 	int i;
 
-	this_cpu = get_cpu();;
-	if (test_and_set_bit(0, &backtrace_flag)) {
+	if (test_and_set_bit(0, &backtrace_flag))
 		/*
 		 * If there is already a trigger_all_cpu_backtrace() in progress
 		 * (backtrace_flag == 1), don't output double cpu dump infos.
 		 */
-		put_cpu();
 		return;
-	}
 
 	cpumask_copy(&backtrace_mask, cpu_online_mask);
 	cpu_clear(this_cpu, backtrace_mask);
@@ -618,7 +617,6 @@ static void smp_send_all_cpu_backtrace(void)
 	if (!cpus_empty(backtrace_mask))
 		smp_cross_call_common(&backtrace_mask, IPI_CPU_BACKTRACE);
 
-	put_cpu();
 	/* Wait for up to 10 seconds for all other CPUs to do the backtrace */
 	for (i = 0; i < 10 * 1000; i++) {
 		if (cpumask_empty(&backtrace_mask))
@@ -714,12 +712,64 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 #endif
 
 	default:
-		pr_crit("CPU%u: Unknown IPI message 0x%x\n", cpu, ipinr);
+		if (ipinr >= IPI_CUSTOM_FIRST && ipinr <= IPI_CUSTOM_LAST)
+			handle_IRQ(ipinr, regs);
+		else
+			pr_crit("CPU%u: Unknown IPI message 0x%x\n",
+				cpu, ipinr);
 		break;
 	}
 	per_cpu(pending_ipi, cpu) = false;
 	set_irq_regs(old_regs);
 }
+
+static void custom_ipi_enable(struct irq_data *data)
+{
+	/*
+	 * Always trigger a new ipi on enable. This only works for clients
+	 * that then clear the ipi before unmasking interrupts.
+	 */
+	smp_cross_call(cpumask_of(smp_processor_id()), data->irq);
+}
+
+static void custom_ipi_disable(struct irq_data *data)
+{
+}
+
+static struct irq_chip custom_ipi_chip = {
+	.name			= "CustomIPI",
+	.irq_enable		= custom_ipi_enable,
+	.irq_disable		= custom_ipi_disable,
+};
+
+static void handle_custom_ipi_irq(unsigned int irq, struct irq_desc *desc)
+{
+	if (!desc->action) {
+		pr_crit("CPU%u: Unknown IPI message 0x%x, no custom handler\n",
+			smp_processor_id(), irq);
+		return;
+	}
+
+	if (!cpumask_test_cpu(smp_processor_id(), desc->percpu_enabled))
+		return; /* IPIs may not be maskable in hardware */
+
+	handle_percpu_devid_irq(irq, desc);
+}
+
+static int __init smp_custom_ipi_init(void)
+{
+	int ipinr;
+
+	for (ipinr = IPI_CUSTOM_FIRST; ipinr <= IPI_CUSTOM_LAST; ipinr++) {
+		irq_set_percpu_devid(ipinr);
+		irq_set_chip_and_handler(ipinr, &custom_ipi_chip,
+					 handle_custom_ipi_irq);
+		set_irq_flags(ipinr, IRQF_VALID | IRQF_NOAUTOEN);
+	}
+
+	return 0;
+}
+core_initcall(smp_custom_ipi_init);
 
 void smp_send_reschedule(int cpu)
 {
