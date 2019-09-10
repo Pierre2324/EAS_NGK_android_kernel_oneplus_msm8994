@@ -44,7 +44,6 @@
 #include <linux/debugobjects.h>
 #include <linux/bug.h>
 #include <linux/compiler.h>
-#include <linux/percpu.h>
 
 #ifdef CONFIG_RCU_TORTURE_TEST
 extern int rcutorture_runnable; /* for sysctl */
@@ -242,14 +241,6 @@ static inline void rcu_user_hooks_switch(struct task_struct *prev,
 
 extern void exit_rcu(void);
 
-#ifdef CONFIG_RCU_NOCB_CPU
-void rcu_init_nohz(void);
-#else /* #ifdef CONFIG_RCU_NOCB_CPU */
-static inline void rcu_init_nohz(void)
-{
-}
-#endif /* #else #ifdef CONFIG_RCU_NOCB_CPU */
-
 /**
  * RCU_NONIDLE - Indicate idle-loop code that needs RCU readers
  * @a: Code that RCU needs to pay attention to.
@@ -274,41 +265,6 @@ static inline void rcu_init_nohz(void)
 		do { a; } while (0); \
 		rcu_irq_exit(); \
 	} while (0)
-
-/*
- * Hooks for cond_resched() and friends to avoid RCU CPU stall warnings.
- */
-
-#define RCU_COND_RESCHED_LIM 256	/* ms vs. 100s of ms. */
-DECLARE_PER_CPU(int, rcu_cond_resched_count);
-void rcu_resched(void);
-
-/*
- * Is it time to report RCU quiescent states?
- *
- * Note unsynchronized access to rcu_cond_resched_count.  Yes, we might
- * increment some random CPU's count, and possibly also load the result from
- * yet another CPU's count.  We might even clobber some other CPU's attempt
- * to zero its counter.  This is all OK because the goal is not precision,
- * but rather reasonable amortization of rcu_note_context_switch() overhead
- * and extremely high probability of avoiding RCU CPU stall warnings.
- * Note that this function has to be preempted in just the wrong place,
- * many thousands of times in a row, for anything bad to happen.
- */
-static inline bool rcu_should_resched(void)
-{
-	return __this_cpu_inc_return(rcu_cond_resched_count) >=
-	       RCU_COND_RESCHED_LIM;
-}
-
-/*
- * Report quiscent states to RCU if it is time to do so.
- */
-static inline void rcu_cond_resched(void)
-{
-	if (unlikely(rcu_should_resched()))
-		rcu_resched();
-}
 
 /*
  * Infrastructure to implement the synchronize_() primitives in
@@ -496,6 +452,8 @@ static inline int rcu_read_lock_sched_held(void)
 #endif /* #else #ifdef CONFIG_DEBUG_LOCK_ALLOC */
 
 #ifdef CONFIG_PROVE_RCU
+
+extern int rcu_my_thread_group_empty(void);
 
 /**
  * rcu_lockdep_assert - emit lockdep splat if specified condition not met

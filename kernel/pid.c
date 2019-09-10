@@ -522,11 +522,8 @@ pid_t __task_pid_nr_ns(struct task_struct *task, enum pid_type type,
 	if (!ns)
 		ns = task_active_pid_ns(current);
 	if (likely(pid_alive(task))) {
-		if (type != PIDTYPE_PID) {
-			if (type == __PIDTYPE_TGID)
-				type = PIDTYPE_PID;
+		if (type != PIDTYPE_PID)
 			task = task->group_leader;
-		}
 		nr = pid_nr_ns(task->pids[type].pid, ns);
 	}
 	rcu_read_unlock();

@@ -943,26 +943,13 @@ EXPORT_SYMBOL(add_timer);
  */
 void add_timer_on(struct timer_list *timer, int cpu)
 {
-	struct tvec_base *new_base = per_cpu(tvec_bases, cpu);
-	struct tvec_base *base;
+	struct tvec_base *base = per_cpu(tvec_bases, cpu);
 	unsigned long flags;
 
 	timer_stats_timer_set_start_info(timer);
 	BUG_ON(timer_pending(timer) || !timer->function);
-
-	/*
-	 * If @timer was on a different CPU, it should be migrated with the
-	 * old base locked to prevent other operations proceeding with the
-	 * wrong base locked.  See lock_timer_base().
-	 */
-	base = lock_timer_base(timer, &flags);
-	if (base != new_base) {
-		timer_set_base(timer, NULL);
-		spin_unlock(&base->lock);
-		base = new_base;
-		spin_lock(&base->lock);
-		timer_set_base(timer, base);
-	}
+	spin_lock_irqsave(&base->lock, flags);
+	timer_set_base(timer, base);
 	debug_activate(timer, timer->expires);
 	internal_add_timer(base, timer);
 	/*
@@ -1125,7 +1112,7 @@ static int cascade(struct tvec_base *base, struct tvec *tv, int index)
 static void call_timer_fn(struct timer_list *timer, void (*fn)(unsigned long),
 			  unsigned long data)
 {
-	int count = preempt_count();
+	int preempt_count = preempt_count();
 
 #ifdef CONFIG_LOCKDEP
 	/*
@@ -1152,16 +1139,16 @@ static void call_timer_fn(struct timer_list *timer, void (*fn)(unsigned long),
 
 	lock_map_release(&lockdep_map);
 
-	if (count != preempt_count()) {
+	if (preempt_count != preempt_count()) {
 		WARN_ONCE(1, "timer: %pF preempt leak: %08x -> %08x\n",
-			  fn, count, preempt_count());
+			  fn, preempt_count, preempt_count());
 		/*
 		 * Restore the preempt count. That gives us a decent
 		 * chance to survive and extract information. If the
 		 * callback kept a lock held, bad luck, but not worse
 		 * than the BUG() we had.
 		 */
-		preempt_count_set(count);
+		preempt_count() = preempt_count;
 	}
 }
 

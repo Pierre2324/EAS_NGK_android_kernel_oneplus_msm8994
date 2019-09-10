@@ -2026,16 +2026,6 @@ static int path_lookupat(int dfd, const char *name,
 		}
 	}
 
-	if (!err) {
-		struct super_block *sb = nd->inode->i_sb;
-		if (sb->s_flags & MS_RDONLY) {
-			if (d_is_su(nd->path.dentry) && !su_visible()) {
-				path_put(&nd->path);
-				err = -ENOENT;
-			}
-		}
-	}
-
 	if (base)
 		fput(base);
 
@@ -4006,7 +3996,6 @@ int vfs_rename2(struct vfsmount *mnt,
 	if (!error)
 		fsnotify_move(old_dir, new_dir, old_name.name, is_dir,
 			      new_dentry->d_inode, old_dentry);
-
 	release_dentry_name_snapshot(&old_name);
 
 	return error;
