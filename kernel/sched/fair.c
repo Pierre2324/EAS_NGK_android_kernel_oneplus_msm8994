@@ -5462,7 +5462,7 @@ static int select_idle_sibling(struct task_struct *p, int target)
 				for_each_cpu_and(i, tsk_cpus_allowed(p), sched_group_cpus(sg)) {
 					struct rq *rq = cpu_rq(i);
 					int idle_idx = idle_get_state_idx(rq);
-					unsigned long new_usage = boosted_task_util(p);
+					unsigned long new_usage = boosted_task_utilization(p);
 					unsigned long capacity_orig = capacity_orig_of(i);
 					if (new_usage > capacity_orig || !idle_cpu(i))
 						goto next;
