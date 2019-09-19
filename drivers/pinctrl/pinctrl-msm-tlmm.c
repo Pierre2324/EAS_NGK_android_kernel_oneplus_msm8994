@@ -961,21 +961,8 @@ static void msm_tlmm_gp_irq_resume(void)
 	for_each_set_bit(i, ic->wake_irqs, num_irqs)
 		msm_tlmm_set_intr_cfg_enable(ic, i, 0);
 
-#ifdef VENDOR_EDIT
-/* Jialong.Wu,add 2015/5/9  Add for wakeup analysis */
-    for_each_set_bit(i, ic->wake_irqs, ic->num_irqs){
-	if (msm_tlmm_get_intr_status(ic, i))
-	   {
-	      dev_info(ic->dev, "hwirq %s %d[%d] triggered\n",
-	      irq_to_desc(gpio_to_irq((unsigned int)(i+878)))->action->name,
-	      (gpio_to_irq((unsigned int)(i+878))), (unsigned int)i);
-		  if((gpio_to_irq((unsigned int)(i+878))) == 604)//spi12.0
-		  {
-			  sched_set_boost(1);//wujialong 20160119,enable sched_boost when fingerprint wakeup
-		  }
-	   }
-    }
-#endif /* VENDOR_EDIT */
+
+
 	for_each_set_bit(i, ic->enabled_irqs, num_irqs)
 		msm_tlmm_set_intr_cfg_enable(ic, i, 1);
 	mb();
