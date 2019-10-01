@@ -3292,6 +3292,7 @@ static inline unsigned long rlimit_max(unsigned int limit)
 }
 
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
+extern int out_dynamic_stune_boost;
 extern int default_topapp_boost;
 extern struct cgroup_subsys_state *topapp_css;
 int dynamic_boost_write(struct cgroup_subsys_state *css, int boost);

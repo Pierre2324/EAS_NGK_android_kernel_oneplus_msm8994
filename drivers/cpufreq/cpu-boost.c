@@ -43,6 +43,7 @@ module_param(input_boost_ms, uint, 0644);
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
 static int dynamic_stune_boost = 0;
 module_param(dynamic_stune_boost, uint, 0644);
+int out_dynamic_stune_boost = 0;
 #endif /* CONFIG_DYNAMIC_STUNE_BOOST */
 
 static struct delayed_work input_boost_rem;
@@ -209,6 +210,8 @@ static void do_input_boost(struct kthread_work *work)
 	/* Set dynamic stune boost value */
         if (dynamic_stune_boost > default_topapp_boost)
                 dynamic_boost_write(topapp_css, dynamic_stune_boost);
+    /* Update external dynamic_stune_boost */
+        out_dynamic_stune_boost = dynamic_stune_boost;    
 #endif /* CONFIG_DYNAMIC_STUNE_BOOST */
 
 	/* Update policies for all online CPUs */
