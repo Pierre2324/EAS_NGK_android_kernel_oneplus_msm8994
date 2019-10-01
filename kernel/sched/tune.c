@@ -13,6 +13,17 @@
 
 unsigned int sysctl_sched_cfs_boost __read_mostly = 0;
 
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+/* 
+ * Assume confidently that the index of top-app is 3.
+ * This observation is likely due to SchedTune cgroups being initialized in alphabetical order untill newly added rt which is 4.
+ * E.g. background = 0, foreground = 1, system-background = 2, top-app = 3, rt = 4
+ */
+unsigned int top_app_idx = 3;
+int default_topapp_boost = 0;
+struct cgroup_subsys_state *topapp_css;
+#endif /* CONFIG_DYNAMIC_STUNE_BOOST */
+
 /* Performance Boost region (B) threshold params */
 static int perf_boost_idx;
 
@@ -496,11 +507,9 @@ boost_write(struct cgroup *cgrp, struct cftype *cft,
 			  u64 boost)
 {
 	struct schedtune *st = cgroup_st(cgrp);
-	int err = 0;
 
 	if (boost < 0 || boost > 100) {
-		err = -EINVAL;
-		goto out;
+		return -EINVAL;
 	}
 
 	st->boost = boost;
@@ -518,16 +527,61 @@ boost_write(struct cgroup *cgrp, struct cftype *cft,
 	st->perf_constrain_idx  = 100 - boost;
 	st->perf_constrain_idx /= 10;
 
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+        // Remember default top-app boost value
+        if (st->idx == top_app_idx)
+                default_topapp_boost = boost;
+#endif /* CONFIG_DYNAMIC_STUNE_BOOST */
+
 	/* Update CPU boost */
 	schedtune_boostgroup_update(st->idx, st->boost);
-	trace_sched_tune_config(st->boost,
-			threshold_gains[st->perf_boost_idx].nrg_gain,
-			threshold_gains[st->perf_boost_idx].cap_gain,
-			threshold_gains[st->perf_constrain_idx].nrg_gain,
-			threshold_gains[st->perf_constrain_idx].cap_gain);
-out:
-	return err;
+
+	//trace_sched_tune_config(st->boost,
+	//		threshold_gains[st->perf_boost_idx].nrg_gain,
+	//		threshold_gains[st->perf_boost_idx].cap_gain,
+	//		threshold_gains[st->perf_constrain_idx].nrg_gain,
+	//		threshold_gains[st->perf_constrain_idx].cap_gain);
+
+	return 0;
 }
+
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+int
+dynamic_boost_write(struct cgroup_subsys_state *css, int boost)
+{
+	struct schedtune *st = css_st(css);
+	unsigned threshold_idx;
+	int boost_pct;
+
+	if (boost < -100 || boost > 100)
+		return -EINVAL;
+	boost_pct = boost;
+
+	/*
+	 * Update threshold params for Performance Boost (B)
+	 * and Performance Constraint (C) regions.
+	 * The current implementatio uses the same cuts for both
+	 * B and C regions.
+	 */
+	threshold_idx = clamp(boost_pct, 0, 99) / 10;
+	st->perf_boost_idx = threshold_idx;
+	st->perf_constrain_idx = threshold_idx;
+
+	st->boost = boost;
+	if (css == &root_schedtune.css) {
+		sysctl_sched_cfs_boost = boost;
+		perf_boost_idx  = threshold_idx;
+		perf_constrain_idx  = threshold_idx;
+	}
+
+	/* Update CPU boost */
+	schedtune_boostgroup_update(st->idx, st->boost);
+
+	//trace_sched_tune_config(st->boost);
+
+	return 0;
+}
+#endif /* CONFIG_DYNAMIC_STUNE_BOOST */
 
 static struct cftype files[] = {
 	{
@@ -553,6 +607,15 @@ schedtune_boostgroup_init(struct schedtune *st)
 		bg->group[st->idx].boost = 0;
 		bg->group[st->idx].tasks = 0;
 	}
+
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	if (st->idx == top_app_idx) {
+            topapp_css = &st->css;
+            default_topapp_boost = st->boost;
+        }
+
+	pr_info("STUNE INIT: top app idx: %d\n", top_app_idx);
+#endif /* CONFIG_DYNAMIC_STUNE_BOOST */
 
 	return 0;
 }
