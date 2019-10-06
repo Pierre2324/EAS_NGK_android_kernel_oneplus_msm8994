@@ -1,5 +1,4 @@
-/* Copyright (c) 2012-2015, 2016-2017 The Linux Foundation. All rights 
- * reserved.
+/* Copyright (c) 2012-2015, 2016, 2017 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -24,6 +23,7 @@
 #include <sound/q6afe-v2.h>
 #include <sound/audio_cal_utils.h>
 #include <sound/asound.h>
+#include <sound/msm-dts-eagle.h>
 #include "msm-dts-srs-tm-config.h"
 #include <sound/sounddebug.h>
 #include <sound/adsp_err.h>
@@ -2237,6 +2237,14 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 	int ret = 0;
 	int port_idx, copp_idx, flags;
 	int tmp_port = q6audio_get_port_id(port_id);
+#ifdef VENDOR_EDIT
+    //guoguangyi@mutimedia.2016.04.07,qcom's patch
+    //use 24bits to get rid of 16bits innate noise
+    if(gis_24bits){
+        bit_width = 24;
+        pr_err("Open adm sepcially for offload\n");
+    }
+#endif
 
 	pr_debug("%s:port %#x path:%d rate:%d mode:%d perf_mode:%d,topo_id %d\n",
 		 __func__, port_id, path, rate, channel_mode, perf_mode,
@@ -2275,7 +2283,8 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 		flags = ADM_LOW_LATENCY_DEVICE_SESSION;
 		if ((topology == DOLBY_ADM_COPP_TOPOLOGY_ID) ||
 		    (topology == DS2_ADM_COPP_TOPOLOGY_ID) ||
-		    (topology == SRS_TRUMEDIA_TOPOLOGY_ID))
+		    (topology == SRS_TRUMEDIA_TOPOLOGY_ID) ||
+		    (topology == ADM_CMD_COPP_OPEN_TOPOLOGY_ID_DTS_HPX))
 			topology = DEFAULT_COPP_TOPOLOGY;
 	} else {
 		if (path == ADM_PATH_COMPRESSED_RX)
@@ -2343,6 +2352,20 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 		(uint32_t)this_adm.outband_memmap.size);
 		}
 	}
+		if ((topology == ADM_CMD_COPP_OPEN_TOPOLOGY_ID_DTS_HPX) &&
+		    (perf_mode == LEGACY_PCM_MODE)) {
+			int res = 0;
+			atomic_set(&this_adm.mem_map_cal_index, ADM_DTS_EAGLE);
+			msm_dts_ion_memmap(&this_adm.outband_memmap);
+			res = adm_memory_map_regions(
+				      &this_adm.outband_memmap.paddr,
+				      0,
+				      (uint32_t *)&this_adm.outband_memmap.size,
+				      1);
+			if (res < 0)
+				pr_err("%s: DTS_EAGLE mmap did not work!",
+					__func__);
+		}
 		open.hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
 						   APR_HDR_LEN(APR_HDR_SIZE),
 						   APR_PKT_VER);
@@ -2559,6 +2582,11 @@ int adm_close(int port_id, int perf_mode, int copp_idx)
 
 	int ret = 0, port_idx;
 	int copp_id = RESET_COPP_ID;
+#ifdef VENDOR_EDIT
+    //guoguangyi@mutimedia.2016.04.07,qcom's patch
+    //use 24bits to get rid of 16bits innate noise
+    gis_24bits = 0;
+#endif
 	pr_debug("%s: port_id=0x%x perf_mode: %d copp_idx: %d\n", __func__,
 		 port_id, perf_mode, copp_idx);
 
@@ -2600,6 +2628,22 @@ int adm_close(int port_id, int perf_mode, int copp_idx)
 			} else {
 				atomic_set(&this_adm.mem_map_cal_handles
 					   [ADM_SRS_TRUMEDIA], 0);
+			}
+		}
+
+		if ((perf_mode == LEGACY_PCM_MODE) &&
+		    (this_adm.outband_memmap.paddr != 0) &&
+		    (atomic_read(
+			&this_adm.copp.topology[port_idx][copp_idx]) ==
+			ADM_CMD_COPP_OPEN_TOPOLOGY_ID_DTS_HPX)) {
+			atomic_set(&this_adm.mem_map_cal_index, ADM_DTS_EAGLE);
+			ret = adm_memory_unmap_regions();
+			if (ret < 0) {
+				pr_err("%s: adm mem unmmap err %d",
+					__func__, ret);
+			} else {
+				atomic_set(&this_adm.mem_map_cal_handles
+					   [ADM_DTS_EAGLE], 0);
 			}
 		}
 
@@ -2947,6 +2991,10 @@ static int adm_init_cal_data(void)
 		{NULL, NULL, cal_utils_match_buf_num} },
 
 		{{ADM_RTAC_APR_CAL_TYPE,
+		{NULL, NULL, NULL, NULL, NULL, NULL} },
+		{NULL, NULL, cal_utils_match_buf_num} },
+
+		{{DTS_EAGLE_CAL_TYPE,
 		{NULL, NULL, NULL, NULL, NULL, NULL} },
 		{NULL, NULL, cal_utils_match_buf_num} },
 

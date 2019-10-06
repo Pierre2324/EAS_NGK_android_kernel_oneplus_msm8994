@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  * Author: Brian Swetland <swetland@google.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -38,8 +38,8 @@
 #include <sound/q6asm-v2.h>
 #include <sound/q6audio-v2.h>
 #include <sound/audio_cal_utils.h>
+#include <sound/msm-dts-eagle.h>
 #include <sound/adsp_err.h>
-#include <sound/compress_params.h>
 
 #define TRUE        0x01
 #define FALSE       0x00
@@ -2137,6 +2137,9 @@ static int __q6asm_open_read(struct audio_client *ac,
 	open.src_endpointype = ASM_END_POINT_DEVICE_MATRIX;
 
 	open.preprocopo_id = q6asm_get_asm_topology();
+	if ((open.preprocopo_id == ASM_STREAM_POSTPROC_TOPO_ID_DTS_HPX) ||
+	    (open.preprocopo_id == ASM_STREAM_POSTPROC_TOPO_ID_HPX_PLUS))
+		open.preprocopo_id = ASM_STREAM_POSTPROCOPO_ID_NONE;
 	open.bits_per_sample = bits_per_sample;
 	open.mode_flags = 0x0;
 
@@ -2353,8 +2356,15 @@ static int __q6asm_open_write(struct audio_client *ac, uint32_t format,
 	open.bits_per_sample = bits_per_sample;
 
 	open.postprocopo_id = q6asm_get_asm_topology();
-	if (ac->perf_mode != LEGACY_PCM_MODE)
+	if ((ac->perf_mode != LEGACY_PCM_MODE) &&
+	    ((open.postprocopo_id == ASM_STREAM_POSTPROC_TOPO_ID_DTS_HPX) ||
+	     (open.postprocopo_id == ASM_STREAM_POSTPROC_TOPO_ID_HPX_PLUS)))
 		open.postprocopo_id = ASM_STREAM_POSTPROCOPO_ID_NONE;
+
+	/* For DTS EAGLE only, force 24 bit */
+	if ((open.postprocopo_id == ASM_STREAM_POSTPROC_TOPO_ID_DTS_HPX) ||
+	     (open.postprocopo_id == ASM_STREAM_POSTPROC_TOPO_ID_HPX_PLUS))
+		open.bits_per_sample = 24;
 
 	pr_debug("%s: perf_mode %d asm_topology 0x%x bps %d\n", __func__,
 		 ac->perf_mode, open.postprocopo_id, open.bits_per_sample);
@@ -2520,6 +2530,10 @@ static int __q6asm_open_read_write(struct audio_client *ac, uint32_t rd_format,
 			      topology : open.postprocopo_id;
 	ac->topology = open.postprocopo_id;
 
+	/* For DTS EAGLE only, force 24 bit */
+	if ((open.postprocopo_id == ASM_STREAM_POSTPROC_TOPO_ID_DTS_HPX) ||
+	     (open.postprocopo_id == ASM_STREAM_POSTPROC_TOPO_ID_HPX_MASTER))
+		open.bits_per_sample = 24;
 
 	switch (wr_format) {
 	case FORMAT_LINEAR_PCM:
