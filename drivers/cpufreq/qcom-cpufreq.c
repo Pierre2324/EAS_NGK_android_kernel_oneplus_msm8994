@@ -69,8 +69,9 @@ static int set_cpu_freq(struct cpufreq_policy *policy, unsigned int new_freq,
 	freqs.new = new_freq;
 	freqs.cpu = policy->cpu;
 
+	cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
+
 	trace_cpu_frequency_switch_start(freqs.old, freqs.new, policy->cpu);
-	cpufreq_freq_transition_begin(policy, &freqs);
 
 	rate = new_freq * 1000;
 	rate = clk_round_rate(cpu_clk[policy->cpu], rate);
@@ -79,9 +80,10 @@ static int set_cpu_freq(struct cpufreq_policy *policy, unsigned int new_freq,
 	ret = set_cpu_freq_raw(policy->cpu, rate, false);
 	mutex_unlock(&cpu_clk_lock);
 	
-	cpufreq_freq_transition_end(policy, &freqs, ret);
-	if (!ret)
+	if (!ret) {
+		cpufreq_notify_transition(policy, &freqs, CPUFREQ_POSTCHANGE);
 		trace_cpu_frequency_switch_end(policy->cpu);
+	}
 
 	return ret;
 }
@@ -186,7 +188,7 @@ static int msm_cpufreq_init(struct cpufreq_policy *policy)
 	pr_debug("cpufreq: cpu%d init at %d switching to %d\n",
 			policy->cpu, cur_freq, table[index].frequency);
 	policy->cur = table[index].frequency;
-	policy->freq_table = table;
+	cpufreq_frequency_table_get_attr(table, policy->cpu);
 
 	return 0;
 }
@@ -503,7 +505,7 @@ static int __init msm_cpufreq_probe(struct platform_device *pdev)
 			if (!IS_ERR(ftbl)) {
 				dev_warn(dev, "Conflicting tables for CPU%d\n",
 					 cpu);
-				devm_kfree(dev, ftbl);
+				kfree(ftbl);
 			}
 			ftbl = per_cpu(freq_table, cpu - 1);
 		}
