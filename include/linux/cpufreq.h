@@ -574,8 +574,6 @@ static inline int cpufreq_generic_exit(struct cpufreq_policy *policy)
 
 void acct_update_power(struct task_struct *p, cputime_t cputime);
 void cpufreq_task_stats_remove_uids(uid_t uid_start, uid_t uid_end);
-void msm_do_pm_boost(bool do_boost);
-
 #else
 
 static inline void acct_update_power(struct task_struct *p, cputime_t cputime)
