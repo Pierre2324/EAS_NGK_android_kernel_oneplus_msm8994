@@ -205,9 +205,8 @@ void do_input_boost_max()
 
 	update_policy_online();
 
-	queue_delayed_work(system_power_efficient_wq,
-		&input_boost_rem, msecs_to_jiffies(
-			!input_boost_ms ? 1500 : input_boost_ms));
+	schedule_delayed_work(&input_boost_rem, msecs_to_jiffies(
+										 !input_boost_ms ? 1500 : input_boost_ms));
 }
 
 static void do_input_boost(struct kthread_work *work)
