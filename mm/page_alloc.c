@@ -62,7 +62,8 @@
 #include <linux/hugetlb.h>
 #include <linux/sched/rt.h>
 #include <linux/nmi.h>
-#include <linux/cpu_input_boost.h>
+#include <linux/devfreq_boost.h>
+#include <linux/cpu_boost.h>
 
 #include <asm/sections.h>
 #include <asm/tlbflush.h>
@@ -2675,7 +2676,8 @@ rebalance:
 	}
 
 	/* Boost when memory is low so allocation latency doesn't get too bad */
-	cpu_input_boost_kick_max(100);
+	devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 100);
+	do_input_boost_max();
 
 	/* Check if we should retry the allocation */
 	pages_reclaimed += did_some_progress;
