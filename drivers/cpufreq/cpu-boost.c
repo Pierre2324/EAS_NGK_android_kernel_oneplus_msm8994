@@ -206,6 +206,14 @@ void do_input_boost_max()
 		i_sync_info->input_boost_min = UINT_MAX;
 	}
 
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	/* Set dynamic stune boost value */
+        if (dynamic_stune_boost > default_topapp_boost)
+                dynamic_boost_write(topapp_css, 100);
+    /* Update external dynamic_stune_boost */
+        out_dynamic_stune_boost = dynamic_stune_boost;    
+#endif /* CONFIG_DYNAMIC_STUNE_BOOST */
+
 	update_policy_online();
 
 	schedule_delayed_work(&input_boost_rem, msecs_to_jiffies(input_boost_ms < 1500 ? 1500 : input_boost_ms));
