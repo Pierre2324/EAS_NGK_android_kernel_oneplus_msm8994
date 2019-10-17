@@ -196,6 +196,9 @@ void do_input_boost_max()
 	unsigned int i;
 	struct cpu_sync *i_sync_info;
 
+	if (!cpu_boost_worker_thread)
+		return;
+
 	cancel_delayed_work_sync(&input_boost_rem);
 
 	for_each_possible_cpu(i) {
@@ -205,8 +208,7 @@ void do_input_boost_max()
 
 	update_policy_online();
 
-	schedule_delayed_work(&input_boost_rem, msecs_to_jiffies(
-										 !input_boost_ms ? 1500 : input_boost_ms));
+	schedule_delayed_work(&input_boost_rem, msecs_to_jiffies(input_boost_ms < 1500 ? 1500 : input_boost_ms));
 }
 
 static void do_input_boost(struct kthread_work *work)
