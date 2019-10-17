@@ -193,18 +193,7 @@ static void do_input_boost_rem(struct work_struct *work)
 
 void do_input_boost_max()
 {
-	unsigned int i;
-	struct cpu_sync *i_sync_info;
-
-	if (!cpu_boost_worker_thread)
-		return;
-
 	cancel_delayed_work_sync(&input_boost_rem);
-
-	for_each_possible_cpu(i) {
-		i_sync_info = &per_cpu(sync_info, i);
-		i_sync_info->input_boost_min = UINT_MAX;
-	}
 
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
 	/* Set dynamic stune boost value */
@@ -213,8 +202,6 @@ void do_input_boost_max()
     /* Update external dynamic_stune_boost */
         out_dynamic_stune_boost = dynamic_stune_boost;    
 #endif /* CONFIG_DYNAMIC_STUNE_BOOST */
-
-	update_policy_online();
 
 	schedule_delayed_work(&input_boost_rem, msecs_to_jiffies(input_boost_ms < 1500 ? 1500 : input_boost_ms));
 }
