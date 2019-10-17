@@ -12,6 +12,9 @@
 #include <linux/oom.h>
 #include <linux/sort.h>
 #include <linux/version.h>
+#include <linux/state_notifier.h>
+#include <linux/devfreq_boost.h>
+#include <linux/cpu_boost.h>
 
 /* The sched_param struct is located elsewhere in newer kernels */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
@@ -219,6 +222,11 @@ static void scan_and_kill(unsigned long pages_needed)
 		pr_info("Killing %s with adj %d to free %lu KiB\n", vtsk->comm,
 			vtsk->signal->oom_score_adj,
 			victim->size << (PAGE_SHIFT - 10));
+		
+		if (!state_suspended) {
+			do_input_boost_max();
+			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW,500);
+		}
 
 		/* Accelerate the victim's death by forcing the kill signal */
 		do_send_sig_info(SIGKILL, SIG_INFO_TYPE, vtsk, KILL_GROUP_TYPE);
