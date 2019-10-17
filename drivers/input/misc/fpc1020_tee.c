@@ -47,6 +47,9 @@
 
 #include <linux/wakelock.h>
 #include <linux/input.h>
+#include <linux/state_notifier.h>
+#include <linux/devfreq_boost.h>
+#include <linux/cpu_boost.h>
 
 #ifdef CONFIG_FB
 #include <linux/fb.h>
@@ -1023,6 +1026,11 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 	wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));//changhua add for KeyguardUpdateMonitor: fingerprint acquired, grabbing fp wakelock
 	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
 
+	if (!state_suspended) {
+		devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 500);
+		do_input_boost_max();
+	}
+	
 	if (!fpc1020->screen_state) {
 		input_report_key(fpc1020->input_dev, KEY_FINGERPRINT, 1);
 		input_sync(fpc1020->input_dev);
