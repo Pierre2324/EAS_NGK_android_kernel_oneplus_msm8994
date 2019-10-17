@@ -53,6 +53,8 @@ static u64 last_input_time;
 static struct kthread_worker cpu_boost_worker;
 static struct task_struct *cpu_boost_worker_thread;
 
+static bool boost_max_init = false;
+
 static int set_input_boost_freq(const char *buf, const struct kernel_param *kp)
 {
 	int i, ntokens = 0;
@@ -193,6 +195,10 @@ static void do_input_boost_rem(struct work_struct *work)
 
 void do_input_boost_max()
 {
+	/* Don't boost as long as it's not initialized */ 
+	if(!boost_max_init)
+		return;
+
 	cancel_delayed_work_sync(&input_boost_rem);
 
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
@@ -371,6 +377,8 @@ static int cpu_boost_init(void)
 	}
 	cpufreq_register_notifier(&boost_adjust_nb, CPUFREQ_POLICY_NOTIFIER);
 	ret = input_register_handler(&cpuboost_input_handler);
+
+	boost_max_init = true;
 
 	return ret;
 }
