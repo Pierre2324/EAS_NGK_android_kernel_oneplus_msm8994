@@ -29,6 +29,9 @@
 #include <trace/events/power.h>
 #include <linux/wakeup_reason.h>
 #include <linux/cpufreq.h>
+#include <linux/devfreq_boost.h>
+#include <linux/cpu_boost.h>
+
 
 #include "power.h"
 
@@ -327,6 +330,8 @@ int suspend_devices_and_enter(suspend_state_t state)
  */
 static void suspend_finish(void)
 {
+	devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 2500);
+	do_input_boost_max();
 	suspend_thaw_processes();
 	pm_notifier_call_chain(PM_POST_SUSPEND);
 	pm_restore_console();
