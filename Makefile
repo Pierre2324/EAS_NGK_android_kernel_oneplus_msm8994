@@ -270,8 +270,9 @@ GRAPHITE = -fgraphite -fgraphite-identity -floop-interchange -ftree-loop-distrib
 	   $(FLAGS_OPTIMIZE)
 HOSTCC       = $(which ccache) gcc
 HOSTCXX      = $(which ccache) g++
-HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -Ofast -finline-functions -fomit-frame-pointer -std=gnu89 $(GRAPHITE) $(FLAGS_OPTIMIZE)
+HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -Ofast -finline-functions -fomit-frame-pointer -std=gnu89 -pipe -fforce-addr $(GRAPHITE) $(FLAGS_OPTIMIZE)
 HOSTCXXFLAGS = -Ofast -fgcse-las -pipe $(GRAPHITE) $(FLAGS_OPTIMIZE)
+subdir-ccflags-y := -Ofast
 
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
@@ -665,7 +666,6 @@ KBUILD_CFLAGS += $(call cc-option, -fno-pie)
 KBUILD_CFLAGS += $(call cc-option, -no-pie)
 KBUILD_AFLAGS += $(call cc-option, -fno-pie)
 KBUILD_CPPFLAGS += $(call cc-option, -fno-pie)
-
 
 KBUILD_CFLAGS	+= -Ofast -fno-inline-functions -fno-pic -fno-ipa-cp-clone -Wno-maybe-uninitialized
 KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
