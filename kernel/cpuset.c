@@ -2157,12 +2157,6 @@ void cpuset_force_rebuild(void)
 	force_rebuild = true;
 }
 
-static bool force_rebuild;
-
-void cpuset_force_rebuild(void)
-{
-	force_rebuild = true;
-}
 
 /**
  * cpuset_hotplug_workfn - handle CPU/memory hotunplug for a cpuset
