@@ -25,6 +25,7 @@
 #include <linux/kthread.h>
 #include <linux/sched/rt.h>
 #include <linux/cpu_boost.h>
+#include <linux/devfreq_boost.h>
 
 struct cpu_sync {
 	int cpu;
@@ -240,6 +241,8 @@ static void do_input_boost(struct kthread_work *work)
 
 	/* Update policies for all online CPUs */
 	update_policy_online();
+	
+	devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 500);
 
 	schedule_delayed_work(&input_boost_rem, msecs_to_jiffies(input_boost_ms));
 }
