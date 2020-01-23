@@ -11,6 +11,7 @@
 #include <linux/irq_work.h>
 
 #include "walt.h"
+
 #include "tune.h"
 
 int sched_rr_timeslice = RR_TIMESLICE;
@@ -1461,7 +1462,6 @@ enqueue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 	rt_se->schedtune_enqueued = true;
 	*per_cpu_ptr(&incoming_rt_task, cpu_of(rq)) = false;
 
-	schedtune_enqueue_task(p, cpu_of(rq));
 	sched_rt_update_capacity_req(rq, false);
 }
 
@@ -1489,7 +1489,6 @@ static void dequeue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 	}
 
 	rt_se->schedtune_enqueued = false;
-	schedtune_dequeue_task(p, cpu_of(rq));
 	sched_rt_update_capacity_req(rq, false);
 }
 
