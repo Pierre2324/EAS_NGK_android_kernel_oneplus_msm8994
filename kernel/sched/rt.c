@@ -13,8 +13,6 @@
 #include "walt.h"
 #include "tune.h" 
 
-#include "tune.h"
-
 int sched_rr_timeslice = RR_TIMESLICE;
 
 static int do_sched_rt_period_timer(struct rt_bandwidth *rt_b, int overrun);
