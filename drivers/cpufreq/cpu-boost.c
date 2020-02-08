@@ -39,6 +39,9 @@ static struct kthread_work input_boost_work;
 static unsigned int input_boost_enabled = 1;
 module_param(input_boost_enabled, uint, 0644);
 
+static bool input_devfreq_boost = 0;
+module_param(input_devfreq_boost, uint, 0644);
+
 static unsigned int input_boost_ms = 40;
 module_param(input_boost_ms, uint, 0644);
 
@@ -242,7 +245,8 @@ static void do_input_boost(struct kthread_work *work)
 	/* Update policies for all online CPUs */
 	update_policy_online();
 	
-	devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 500);
+	if(input_devfreq_boost)	
+		devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 500);
 
 	schedule_delayed_work(&input_boost_rem, msecs_to_jiffies(input_boost_ms));
 }
